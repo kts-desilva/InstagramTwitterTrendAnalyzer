@@ -1,0 +1,105 @@
+// Copyright (c) 2018, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+//
+// WSO2 Inc. licenses this file to you under the Apache License,
+// Version 2.0 (the "License"); you may not use this file except
+// in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.package sample;
+
+import wso2/twilio;
+import wso2/twitter;
+import ballerina/config;
+import ballerina/log;
+import ballerina/http;
+
+
+documentation {
+    Represents Twilio client endpoint.
+}
+endpoint twilio:Client twilioClient {
+    accountSId: config:getAsString(TWILIO_ACCOUNT_SID),
+    authToken: config:getAsString(TWILIO_AUTH_TOKEN)
+};
+
+documentation {
+    Represents Medium client endpoint.
+}
+endpoint Client mediumClient {
+        clientConfig:{
+            auth:{
+                accessToken:"2c838abe6d6def9abf79cf296240cf02dda959aca55190ce999249b5aebba77d1",
+                refreshToken:"2e1c7690d23672bfc3e7b4840bed9b602c6d1a87c5aff5a970ab864d004f051a7",
+                clientId:"dc739c2059d9",
+                clientSecret:"59183a503909f5988f25a8babb05781a80248c7f"
+            }
+        }
+    };
+
+documentation {
+    Main function to run the integration system.
+}
+function main(string... args) {
+    log:printInfo("Salesforce-Twilio Integration -> Sending promotional SMS to me");
+    
+    boolean result = sendSmsToLeads();
+    if (result) {
+        log:printDebug("Salesforce-Twilio Integration -> Promotional SMS sending process successfully completed!");
+    } else {
+        log:printDebug("Salesforce-Twilio Integration -> Promotional SMS sending process failed!");
+    }
+}
+
+documentation {
+    Utility function integrate Salesforce and Twilio connectors.
+    R{{}} State of whether the process of sending SMS to leads are success or not
+}
+function sendSmsToLeads() returns boolean {
+
+    var profileDetails = mediumClient->getProfileInfo();
+    log:printInfo("Medium id " + profileDetails);
+
+    
+    
+    string message = config:getAsString(TWILIO_MESSAGE);
+    string fromMobile = config:getAsString(TWILIO_FROM_MOBILE);
+    string toMobile = "+94716136837";
+
+    boolean isSuccess = sendTextMessage(fromMobile, toMobile, message);
+        
+    return isSuccess;
+}
+
+
+documentation {
+
+    Utility function to send SMS.
+
+    P{{fromMobile}} from mobile number
+    P{{toMobile}} to mobile number
+    P{{message}} sending message
+    R{{}} The status of sending SMS success or not
+}
+function sendTextMessage(string fromMobile, string toMobile, string message) returns boolean {
+    var details = twilioClient->sendSms(fromMobile, toMobile, message);
+    match details {
+        twilio:SmsResponse smsResponse => {
+            if (smsResponse.sid != EMPTY_STRING) {
+                log:printDebug("Twilio Connector -> SMS successfully sent to " + toMobile);
+                return true;
+            }
+        }
+        twilio:TwilioError err => {
+            log:printDebug("Twilio Connector -> SMS failed sent to " + toMobile);
+            log:printError(err.message);
+        }
+    }
+    return false;
+}
