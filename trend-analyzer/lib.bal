@@ -11,10 +11,10 @@ documentation {
     Represents Twitter client endpoint.
 }
 endpoint twitter:Client twitter {
-   clientId: "",
-   clientSecret: "",
-   accessToken: "",
-   accessTokenSecret: ""
+   clientId: config:getAsString(TWITTER_CLIENT_ID),
+   clientSecret: config:getAsString(TWITTER_CLIENT_SECRET),,
+   accessToken: config:getAsString(TWITTER_ACCESS_TOKEN),,
+   accessTokenSecret: config:getAsString(TWITTER_TOKEN_SECRET),
 };
 
 documentation {
@@ -24,7 +24,7 @@ endpoint instagram:Client instagramClient {
    clientConfig:{
        auth:{
            scheme:"OAuth2",
-           accessToken:""
+           accessToken:config:getAsString(INSTAGRAM_ACCESS_TOKEN),
        }
    }
 };
@@ -58,20 +58,14 @@ endpoint http:Client aylienEndpoint {
     url: "https://api.aylien.com/api/v1/sentiment"
 };
 
-
 documentation {
     Main function to run the integration system.
 }
 function activate() returns boolean {
     log:printInfo("instagram-Twitter-Gmail-Twilio Integration -> Sending twitter trends through SMS and email to me");
     
-    //boolean result = sendSmsToLeads();
-    
     float latitude=filterInstagram("lat");
     float longitude=filterInstagram("lon");
-    
-    io:println("Latitude : "+<string>latitude);
-    io:println("Longitude : "+<string>longitude);
 
     string locationName=filterInstagramLocationName();
 
@@ -80,7 +74,6 @@ function activate() returns boolean {
     return result;
     
 }
-
 
 documentation {
 
@@ -105,11 +98,8 @@ function filterTweets(float latitude,float longitude,string locName)returns bool
         }else{
             break;
         }
-
         locationCount++;
-        
     }
-
 
     twitter:Location []locs=check twitter->getClosestTrendLocations(latitude, longitude); 
 
@@ -174,7 +164,7 @@ function filterTweets(float latitude,float longitude,string locName)returns bool
     io:println(trendText);
     io:println("Length of trend text :" +<string>lengthof trendText);
 
-    boolean smsResult = sendSmsToLeads(trendText);
+    boolean smsResult = sendSmsToUser(trendText);
 
     return sendMailResult && smsResult;
 
@@ -199,8 +189,8 @@ function analyzeTrends(string trendT)returns float{
 
     http:Request req = new;
     
-    req.addHeader("X-AYLIEN-TextAPI-Application-ID","");
-    req.addHeader("X-AYLIEN-TextAPI-Application-Key","");
+    req.addHeader("X-AYLIEN-TextAPI-Application-ID",config:getAsString(AYLIEN_APPLICATION_ID));
+    req.addHeader("X-AYLIEN-TextAPI-Application-Key",config:getAsString(AYLIEN_APPLICATION_KEY));
 
     string link="?text="+newText;
     var response = aylienEndpoint->get(link,message=req);
@@ -242,22 +232,22 @@ documentation {
 
     P{{body}} from message to be wriiten in the email body
     R{{}} The location coordinates
+    If successful, returns the message ID and thread ID.
+    Unsuccessful attempts return a Gmail error.
 }
 
 function sendMail(string body) returns boolean{
     gmail:MessageRequest messageRequest;
-    messageRequest.recipient = "kts.desilva@yahoo.com";
-    messageRequest.sender = "ktl.desilva@gmail.com";
+    messageRequest.recipient = config:getAsString(EMAIL_RECEPIENT);
+    messageRequest.sender = config:getAsString(EMAIL_SENDER);
     messageRequest.subject = "Insta-Twitter Trend Analyzer with Ballerina";
     messageRequest.messageBody = body;
-    //Set the content type of the mail as TEXT_PLAIN or TEXT_HTML.
     messageRequest.contentType = gmail:TEXT_HTML;
-    //Send the message.
+
     var sendMessageResponse = gmailEP -> sendMessage("me", messageRequest);
 
     match sendMessageResponse {
     (string, string) sendStatus => {
-        //If successful, returns the message ID and thread ID.
         string messageId;
         string threadId;
         (messageId, threadId) = sendStatus;
@@ -266,8 +256,6 @@ function sendMail(string body) returns boolean{
         
         return true;
     }
-    
-        //Unsuccessful attempts return a Gmail error.
         gmail:GmailError e => io:println(e); 
 
     }
@@ -297,12 +285,10 @@ function filterInstagram(string ltype) returns float{
         
         json response => {
             if(ltype=="lat"){
-                val=check <float>  response["data"][0]["location"]["latitude"];
-                //io:println(response["data"][0]["location"]["latitude"]); 
+                val=check <float>  response["data"][0]["location"]["latitude"]; 
             
             }else if(ltype=="lon"){
                 val=check <float>  response["data"][0]["location"]["longitude"];
-                //io:println(response["data"][0]["location"]["longitude"]); 
                 
             }else{
                 io:println("Invalid paramter type");
@@ -328,7 +314,6 @@ function filterInstagramLocationName() returns string{
         
         json response => {
             val= check<string>response["data"][0]["location"]["name"];
-            //io:println(response["data"][0]["location"]);
         }
         instagram:InstagramError instagramError => io:println(instagramError.message);
     }
@@ -337,16 +322,14 @@ function filterInstagramLocationName() returns string{
 }
 
 
-
 documentation {
     Utility function integrate Twitter and Twilio connectors.
     R{{}} State of whether the process of sending SMS to leads are success or not
 }
-function sendSmsToLeads(string message) returns boolean {
+function sendSmsToUser(string message) returns boolean {
 
-    //string message = config:getAsString(TWILIO_MESSAGE);
     string fromMobile = config:getAsString(TWILIO_FROM_MOBILE);
-    string toMobile = "+94716136837";
+    string toMobile = config:getAsString(TWILIO_TO_MOBILE);
 
     boolean isSuccess = sendTextMessage(fromMobile, toMobile, message);
         
@@ -369,13 +352,13 @@ function sendTextMessage(string fromMobile, string toMobile, string message) ret
     match details {
         twilio:SmsResponse smsResponse => {
             if (smsResponse.sid != EMPTY_STRING) {
-                log:printDebug("Twilio Connector -> SMS successfully sent to " + toMobile);
+                io:println("SMS successfully sent to " + toMobile);
                 return true;
             }
         }
         twilio:TwilioError err => {
-            log:printDebug("Twilio Connector -> SMS failed sent to " + toMobile);
-            log:printError(err.message);
+            io:println("SMS failed sent to " + toMobile);
+            io:println(err.message);
         }
     }
     return false;
