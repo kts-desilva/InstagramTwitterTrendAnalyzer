@@ -1,20 +1,30 @@
 import ballerina/io;
+import ballerina/config;
 import wso2/twilio;
 import wso2/twitter;
 import chanakal/instagram;
 import wso2/gmail;
-import ballerina/config;
+
 import ballerina/log;
 import ballerina/http;
+
+
+documentation {
+    Represents Twilio client endpoint.
+}
+endpoint twilio:Client twilioClient {
+    accountSId: config:getAsString(TWILIO_ACCOUNT_SID),
+    authToken: config:getAsString(TWILIO_AUTH_TOKEN)
+};
 
 documentation {
     Represents Twitter client endpoint.
 }
 endpoint twitter:Client twitter {
    clientId: config:getAsString(TWITTER_CLIENT_ID),
-   clientSecret: config:getAsString(TWITTER_CLIENT_SECRET),,
-   accessToken: config:getAsString(TWITTER_ACCESS_TOKEN),,
-   accessTokenSecret: config:getAsString(TWITTER_TOKEN_SECRET),
+   clientSecret: config:getAsString(TWITTER_CLIENT_SECRET),
+   accessToken: config:getAsString(TWITTER_ACCESS_TOKEN),
+   accessTokenSecret: config:getAsString(TWITTER_ACCESS_TOKEN_SECRET)
 };
 
 documentation {
@@ -24,7 +34,7 @@ endpoint instagram:Client instagramClient {
    clientConfig:{
        auth:{
            scheme:"OAuth2",
-           accessToken:config:getAsString(INSTAGRAM_ACCESS_TOKEN),
+           accessToken:config:getAsString(INSTAGRAM_ACCESS_TOKEN)
        }
    }
 };
@@ -43,13 +53,7 @@ endpoint gmail:Client gmailEP {
     }
 };
 
-documentation {
-    Represents Twilio client endpoint.
-}
-endpoint twilio:Client twilioClient {
-    accountSId: config:getAsString(TWILIO_ACCOUNT_SID),
-    authToken: config:getAsString(TWILIO_AUTH_TOKEN)
-};
+
 
 documentation {
     Represents Aylien client (Sentiment Analysis) endpoint.

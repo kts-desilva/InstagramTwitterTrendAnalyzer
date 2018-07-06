@@ -5,7 +5,7 @@ endpoint http:Listener listener {
 };
 
 // InstTwi REST service
-@http:ServiceConfig { basePath: "/sms-sender" }
+@http:ServiceConfig { basePath: "/trend-analyzer" }
 service<http:Service> InstTwi bind listener {
 
     // Resource that handles the HTTP POST requests that are directed to
